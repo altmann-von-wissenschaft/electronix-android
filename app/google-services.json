@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "420097723223",
+    "project_id": "pnzgu-electronix",
+    "storage_bucket": "pnzgu-electronix.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:420097723223:android:398c2e73aa8888883dcc12",
+        "android_client_info": {
+          "package_name": "com.pnzgu.electronix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9sBhmFQKia_jXKbU2HAjnBCn_5CV9QSg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
