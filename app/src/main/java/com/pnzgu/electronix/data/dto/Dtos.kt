@@ -30,6 +30,7 @@ data class RegisterRequest(
 @Serializable
 data class ApiErrorDto(
     val message: String? = null,
+    val retryAfterSeconds: Int? = null,
 )
 
 @Serializable
@@ -39,12 +40,20 @@ data class RegisterResponse(
 )
 
 @Serializable
+data class UserRoleAssignmentDto(
+    val roleCode: String,
+    val assignedAt: String,
+    @SerialName("assignedByUserId") val assignedByUserId: String? = null,
+)
+
+@Serializable
 data class UserDto(
     val id: String,
     val email: String,
     val nickname: String? = null,
     @SerialName("isBlocked") val isBlocked: Boolean = false,
     val roles: List<String> = emptyList(),
+    val roleAssignments: List<UserRoleAssignmentDto> = emptyList(),
 )
 
 @Serializable

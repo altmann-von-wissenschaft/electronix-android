@@ -558,6 +558,36 @@ fun ProductDetailScreen(
                                     }
                                 }
                             }
+                        } else {
+                            item {
+                                Card(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                ) {
+                                    Column(
+                                        Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.product_guest_cart_hint),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        TextButton(
+                                            onClick = { nav.navigate("login") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(stringResource(R.string.login_action))
+                                        }
+                                    }
+                                }
+                            }
                         }
                         item {
                             Text(

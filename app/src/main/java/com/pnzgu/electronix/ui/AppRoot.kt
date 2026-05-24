@@ -602,20 +602,20 @@ private fun AppDrawerContent(
         )
         DrawerLink(
             nav,
+            "support_new",
+            stringResource(R.string.nav_support_new),
+            drawerScope,
+            closeDrawerSuspended,
+            restoreNavigationState = false,
+        )
+        DrawerLink(
+            nav,
             "support_my",
             stringResource(R.string.nav_support_my),
             drawerScope,
             closeDrawerSuspended,
             restoreNavigationState = false,
             badge = badges.supportMy.takeIf { it > 0 },
-        )
-        DrawerLink(
-            nav,
-            "support_new",
-            stringResource(R.string.nav_support_new),
-            drawerScope,
-            closeDrawerSuspended,
-            restoreNavigationState = false,
         )
     }
     if (user.isManager()) {

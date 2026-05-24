@@ -46,6 +46,49 @@ private object InputRules {
     val NICK_RE: Pattern = Pattern.compile("^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё0-9_]{3,23}$")
 }
 
+private fun Char.isAllowedNicknameChar(): Boolean =
+    this in 'A'..'Z' || this in 'a'..'z' ||
+        this in '0'..'9' || this == '_' ||
+        this in 'А'..'я' || this == 'Ё' || this == 'ё'
+
+/** @return error message or null if nickname is valid (required, 4–24, letters/digits/_) */
+private fun validateNickname(nickname: String): String? {
+    val n = nickname.trim()
+    if (n.isEmpty()) return "Псевдоним не должен быть пустым."
+    if (n.length < InputRules.NICKNAME_MIN) return "Псевдоним слишком короткий."
+    if (n.any { !it.isAllowedNicknameChar() }) {
+        val hasAsciiSpecial = n.any { ch ->
+            ch != '_' && ch.code in 0..127 && !ch.isLetter() && !ch.isDigit()
+        }
+        return if (hasAsciiSpecial) {
+            "Псевдоним не может содержать спецсимволы кроме нижнего подчеркивания."
+        } else {
+            "Псевдоним не должен содержать нестандартные символы UTF-8."
+        }
+    }
+    if (!InputRules.NICK_RE.matcher(n).matches()) {
+        return "Псевдоним: 4-24 символа, начинается с буквы; только кириллица/латиница, цифры и _."
+    }
+    return null
+}
+
+private fun formatLoginLockoutRemainingRu(totalSeconds: Int): String {
+    if (totalSeconds <= 0) return ""
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return buildString {
+        if (minutes > 0) {
+            append(minutes)
+            append(" мин.")
+        }
+        if (minutes > 0 && seconds > 0) append(' ')
+        if (seconds > 0 || minutes == 0) {
+            append(seconds)
+            append(" сек.")
+        }
+    }.trim()
+}
+
 class LoginViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
@@ -82,13 +125,34 @@ class LoginViewModel(
                     onSuccess()
                 }
                 .onFailure { e ->
-                    _password.value = ""
-                    _error.value = when (e) {
+                    when (e) {
                         is HttpException -> when (e.code()) {
-                            401, 400 -> "Неверный email или пароль."
-                            else -> "Ошибка сервера (${e.code()})."
+                            429 -> {
+                                val dto = e.response()?.errorBody()?.use { it.string() }?.let { raw ->
+                                    runCatching { container.json.decodeFromString<ApiErrorDto>(raw) }.getOrNull()
+                                }
+                                val base = dto?.message?.takeIf { it.isNotBlank() }
+                                    ?: "Слишком много неверных попыток входа. Доступ временно ограничен."
+                                val sec = dto?.retryAfterSeconds
+                                _error.value = if (sec != null && sec > 0) {
+                                    "$base Повторить можно через ${formatLoginLockoutRemainingRu(sec)}."
+                                } else {
+                                    base
+                                }
+                            }
+                            401, 400 -> {
+                                _password.value = ""
+                                _error.value = "Неверный email или пароль."
+                            }
+                            else -> {
+                                _password.value = ""
+                                _error.value = "Ошибка сервера (${e.code()})."
+                            }
                         }
-                        else -> e.message?.takeIf { it.isNotBlank() } ?: "Не удалось войти."
+                        else -> {
+                            _password.value = ""
+                            _error.value = e.message?.takeIf { it.isNotBlank() } ?: "Не удалось войти."
+                        }
                     }
                 }
         }
@@ -111,6 +175,8 @@ class RegisterViewModel(
     val email: StateFlow<String> = _email.asStateFlow()
     private val _password = MutableStateFlow("")
     val password: StateFlow<String> = _password.asStateFlow()
+    private val _passwordConfirm = MutableStateFlow("")
+    val passwordConfirm: StateFlow<String> = _passwordConfirm.asStateFlow()
     private val _nickname = MutableStateFlow("")
     val nickname: StateFlow<String> = _nickname.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
@@ -124,18 +190,33 @@ class RegisterViewModel(
     fun setPassword(v: String) {
         _password.value = v.take(InputRules.PASSWORD_MAX)
     }
+
+    fun setPasswordConfirm(v: String) {
+        _passwordConfirm.value = v.take(InputRules.PASSWORD_MAX)
+    }
+
     fun setNickname(v: String) {
         _nickname.value = v.take(InputRules.NICKNAME_MAX)
     }
 
-    fun register(onSuccess: () -> Unit) {
+    fun register(acceptedPersonalDataConsent: Boolean, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _error.value = null
+            if (!acceptedPersonalDataConsent) {
+                _error.value =
+                    "Подтвердите согласие на обработку персональных данных и ознакомление с политикой конфиденциальности."
+                return@launch
+            }
             val email = _email.value.trim()
             val password = _password.value
+            val passwordConfirm = _passwordConfirm.value
             val nickname = _nickname.value.trim()
             if (!InputRules.EMAIL_RE.matcher(email).matches()) {
                 _error.value = "Email: корректный формат, например name@example.com."
+                return@launch
+            }
+            if (password != passwordConfirm) {
+                _error.value = "Пароли не совпадают."
                 return@launch
             }
             val hasUpper = password.any(Char::isUpperCase)
@@ -145,8 +226,8 @@ class RegisterViewModel(
                 _error.value = "Пароль: 8-72 символа, минимум одна заглавная, одна строчная буква и цифра."
                 return@launch
             }
-            if (nickname.isNotBlank() && !InputRules.NICK_RE.matcher(nickname).matches()) {
-                _error.value = "Псевдоним: 4-24 символа, начинается с буквы; только кириллица/латиница, цифры и _."
+            validateNickname(nickname)?.let { msg ->
+                _error.value = msg
                 return@launch
             }
             _busy.value = true
@@ -154,7 +235,7 @@ class RegisterViewModel(
                 container.sessionRepository.register(
                     email,
                     password,
-                    nickname.ifBlank { null },
+                    nickname,
                 )
             }.onSuccess {
                 _busy.value = false
@@ -269,8 +350,24 @@ class ProfileViewModel(
 
 data class CartUiState(
     val cart: CartDto? = null,
-    val error: String? = null,
+    val loadError: String? = null,
+    val checkoutError: String? = null,
 )
+
+private fun AppContainer.parseCheckoutApiError(e: Throwable): String {
+    if (e is HttpException) {
+        val apiMsg = e.response()?.errorBody()?.use { it.string() }?.let { raw ->
+            runCatching { json.decodeFromString<ApiErrorDto>(raw).message }.getOrNull()
+        }?.takeIf { it.isNotBlank() }
+        if (apiMsg != null) return apiMsg
+        return when (e.code()) {
+            400 -> "Не удалось оформить заказ. Проверьте состав корзины и наличие товаров."
+            in 500..599 -> "Ошибка сервера (${e.code()})."
+            else -> "Ошибка сети или сервера (${e.code()})."
+        }
+    }
+    return e.message?.takeIf { it.isNotBlank() } ?: "Не удалось оформить заказ."
+}
 
 class CartViewModel(
     private val container: AppContainer,
@@ -288,7 +385,15 @@ class CartViewModel(
                 _ui.value = CartUiState(cart = cart)
                 container.updateCartBadgeFromSnapshot(cart)
             }
-            .onFailure { _ui.value = CartUiState(error = it.message) }
+            .onFailure { e ->
+                _ui.value = CartUiState(loadError = e.message ?: "Не удалось загрузить корзину.")
+            }
+    }
+
+    private fun clearCheckoutError() {
+        _ui.update { state ->
+            if (state.checkoutError == null) state else state.copy(checkoutError = null)
+        }
     }
 
     fun reload() {
@@ -297,12 +402,14 @@ class CartViewModel(
 
     fun removeItem(itemId: String) {
         viewModelScope.launch {
+            clearCheckoutError()
             runCatching { container.api.removeCartItem(itemId) }.onSuccess { reload() }
         }
     }
 
     fun incrementQuantity(item: CartItemDto) {
         viewModelScope.launch {
+            clearCheckoutError()
             runCatching {
                 container.api.updateCartItem(item.id, UpdateCartItemRequest(item.quantity + 1))
             }.onSuccess { loadCart() }
@@ -315,6 +422,7 @@ class CartViewModel(
             return
         }
         viewModelScope.launch {
+            clearCheckoutError()
             runCatching {
                 container.api.updateCartItem(item.id, UpdateCartItemRequest(item.quantity - 1))
             }.onSuccess { loadCart() }
@@ -323,13 +431,16 @@ class CartViewModel(
 
     fun checkout(onOrderId: (String) -> Unit) {
         viewModelScope.launch {
+            _ui.update { it.copy(checkoutError = null) }
             runCatching { container.api.createOrder() }
                 .onSuccess { order ->
                     loadCart()
                     container.requestDrawerBadgesRefresh()
                     onOrderId(order.id)
                 }
-                .onFailure { e -> _ui.update { it.copy(error = e.message) } }
+                .onFailure { e ->
+                    _ui.update { it.copy(checkoutError = container.parseCheckoutApiError(e)) }
+                }
         }
     }
 

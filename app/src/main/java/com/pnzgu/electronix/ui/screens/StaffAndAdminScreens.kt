@@ -506,6 +506,22 @@ fun AdminUserDetailScreen(
                 )
                 Text(u.email)
                 Text("${stringResource(R.string.roles)}: ${u.roles.joinToString()}")
+                u.roleAssignments.forEach { ra ->
+                    val whenLabel = ra.assignedAt.take(19).replace('T', ' ')
+                    Text(
+                        text = if (ra.assignedByUserId.isNullOrBlank()) {
+                            stringResource(R.string.role_assignment_system, ra.roleCode, whenLabel)
+                        } else {
+                            stringResource(
+                                R.string.role_assignment_admin,
+                                ra.roleCode,
+                                ra.assignedByUserId,
+                                whenLabel,
+                            )
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 Button(onClick = { vm.toggleBlock() }) {
                     Text(if (u.isBlocked) stringResource(R.string.unblock) else stringResource(R.string.block))
                 }

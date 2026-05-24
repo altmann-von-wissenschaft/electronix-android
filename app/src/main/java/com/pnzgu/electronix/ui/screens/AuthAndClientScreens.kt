@@ -2,6 +2,7 @@ package com.pnzgu.electronix.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,11 +62,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.BackHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -221,6 +228,66 @@ fun LoginScreen(
     }
 }
 
+@Composable
+private fun RegisterPersonalDataConsentRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val uriHandler = LocalUriHandler.current
+    val consentUrl = stringResource(R.string.register_url_personal_data)
+    val privacyUrl = stringResource(R.string.register_url_privacy)
+    val primary = MaterialTheme.colorScheme.primary
+    val bodyStyle = MaterialTheme.typography.bodyMedium
+    val annotated = buildAnnotatedString {
+        append(stringResource(R.string.register_consent_prefix))
+        pushStringAnnotation(tag = "URL", annotation = consentUrl)
+        withStyle(
+            SpanStyle(
+                color = primary,
+                textDecoration = TextDecoration.Underline,
+            ),
+        ) {
+            append(stringResource(R.string.register_consent_link_consent))
+        }
+        pop()
+        append(stringResource(R.string.register_consent_middle))
+        pushStringAnnotation(tag = "URL", annotation = privacyUrl)
+        withStyle(
+            SpanStyle(
+                color = primary,
+                textDecoration = TextDecoration.Underline,
+            ),
+        ) {
+            append(stringResource(R.string.register_consent_link_privacy))
+        }
+        pop()
+        append(stringResource(R.string.register_consent_suffix))
+    }
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        ClickableText(
+            text = annotated,
+            style = bodyStyle.copy(color = MaterialTheme.colorScheme.onSurface),
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 4.dp),
+            onClick = { offset ->
+                annotated.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                    .firstOrNull()
+                    ?.let { uriHandler.openUri(it.item) }
+            },
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(backStackEntry: NavBackStackEntry, container: AppContainer, nav: NavController) {
@@ -230,10 +297,13 @@ fun RegisterScreen(backStackEntry: NavBackStackEntry, container: AppContainer, n
     )
     val email by vm.email.collectAsStateWithLifecycle()
     val password by vm.password.collectAsStateWithLifecycle()
+    val passwordConfirm by vm.passwordConfirm.collectAsStateWithLifecycle()
     val nickname by vm.nickname.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     var showPassword by remember { mutableStateOf(false) }
+    var showPasswordConfirm by remember { mutableStateOf(false) }
+    var consentAccepted by remember { mutableStateOf(false) }
 
     BackHandler { nav.popOrGoToCatalogRoot() }
 
@@ -303,12 +373,42 @@ fun RegisterScreen(backStackEntry: NavBackStackEntry, container: AppContainer, n
                         },
                     )
                     OutlinedTextField(
+                        passwordConfirm,
+                        { vm.setPasswordConfirm(it) },
+                        label = { Text(stringResource(R.string.confirm_password)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        visualTransformation = if (showPasswordConfirm) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { showPasswordConfirm = !showPasswordConfirm }) {
+                                Icon(
+                                    if (showPasswordConfirm) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (showPasswordConfirm) {
+                                        stringResource(R.string.hide_password)
+                                    } else {
+                                        stringResource(R.string.show_password)
+                                    },
+                                )
+                            }
+                        },
+                    )
+                    OutlinedTextField(
                         nickname,
                         { vm.setNickname(it) },
                         label = { Text(stringResource(R.string.nickname)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
+                    )
+                    RegisterPersonalDataConsentRow(
+                        checked = consentAccepted,
+                        onCheckedChange = { consentAccepted = it },
+                        modifier = Modifier.padding(vertical = 8.dp),
                     )
                     error?.let {
                         Text(
@@ -319,14 +419,14 @@ fun RegisterScreen(backStackEntry: NavBackStackEntry, container: AppContainer, n
                     }
                     Button(
                         onClick = {
-                            vm.register {
+                            vm.register(consentAccepted) {
                                 nav.navigate("login") {
                                     popUpTo("register") { inclusive = true }
                                     launchSingleTop = true
                                 }
                             }
                         },
-                        enabled = !busy,
+                        enabled = !busy && consentAccepted,
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(14.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
@@ -461,7 +561,6 @@ fun ProfileScreen(
                             val roleManager = stringResource(R.string.role_manager)
                             val roleModerator = stringResource(R.string.role_moderator)
                             val roleAdministrator = stringResource(R.string.role_administrator)
-                            val roleGuest = stringResource(R.string.role_guest)
                             HorizontalDivider()
                             Text(
                                 stringResource(R.string.profile_staff_roles),
@@ -479,7 +578,6 @@ fun ProfileScreen(
                                         "MANAGER" -> roleManager
                                         "MODERATOR" -> roleModerator
                                         "ADMINISTRATOR" -> roleAdministrator
-                                        "GUEST" -> roleGuest
                                         else -> code
                                     }
                                 },
@@ -621,14 +719,14 @@ fun CartScreen(
         },
     ) { padding ->
         when {
-            state.error != null -> Box(
+            state.loadError != null && state.cart == null -> Box(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 ElectronixInlineError(
-                    message = state.error!!,
+                    message = state.loadError!!,
                     onRetry = { vm.reload() },
                     modifier = Modifier.padding(horizontal = 20.dp),
                 )
@@ -770,6 +868,13 @@ fun CartScreen(
                                             .height(52.dp),
                                         shape = RoundedCornerShape(14.dp),
                                     ) { Text(stringResource(R.string.checkout)) }
+                                    state.checkoutError?.let { checkoutErr ->
+                                        Text(
+                                            checkoutErr,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
                                 }
                             }
                         }

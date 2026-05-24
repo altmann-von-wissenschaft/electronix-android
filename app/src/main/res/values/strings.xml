@@ -17,7 +17,7 @@
     <string name="nav_support">Поддержка</string>
     <string name="nav_support_my">Мои обращения</string>
     <string name="nav_support_new">Поддержка</string>
-    <string name="support_new_hint">Здесь можно отправить новый вопрос в поддержку. Список ваших обращений — пункт «Мои обращения».</string>
+    <string name="support_new_hint">Здесь можно отправить новый вопрос в поддержку. Список ваших обращений — в пункте «Мои обращения» ниже в меню.</string>
     <string name="support_answer_intro">Ниже текст обращения пользователя. Ответ будет отправлен после нажатия «Отправить».</string>
     <string name="support_ticket_question">Обращение</string>
     <string name="support_your_reply">Ваш ответ</string>
@@ -40,11 +40,26 @@
     <string name="empty">Пусто</string>
     <string name="email">Email</string>
     <string name="password">Пароль</string>
+    <string name="confirm_password">Подтверждение пароля</string>
     <string name="nickname">Псевдоним</string>
+    <string name="register_nickname_empty">Псевдоним не должен быть пустым.</string>
+    <string name="register_nickname_too_short">Псевдоним слишком короткий.</string>
+    <string name="register_nickname_special_chars">Псевдоним не может содержать спецсимволы кроме нижнего подчеркивания.</string>
+    <string name="register_nickname_invalid_utf8">Псевдоним не должен содержать нестандартные символы UTF-8.</string>
+    <string name="register_nickname_format">Псевдоним: 4-24 символа, начинается с буквы; только кириллица/латиница, цифры и _.</string>
     <string name="login_action">Войти</string>
     <string name="login_subtitle">Войдите в аккаунт, чтобы оформлять заказы и видеть историю.</string>
     <string name="register_action">Зарегистрироваться</string>
     <string name="register_subtitle">Создайте аккаунт, чтобы оформлять заказы. После регистрации войдите с тем же email и паролем.</string>
+    <!-- Заглушки URL (ФЗ-152); замените на страницы вашего сайта -->
+    <string name="register_url_personal_data">https://yandex.ru</string>
+    <string name="register_url_privacy">https://yandex.ru</string>
+    <string name="register_consent_prefix">Нажимая кнопку «Зарегистрироваться», вы даете свое\u0020</string>
+    <string name="register_consent_link_consent">согласие на обработку персональных данных</string>
+    <string name="register_consent_middle">\u0020и соглашаетесь с условиями\u0020</string>
+    <string name="register_consent_link_privacy">Политики конфиденциальности</string>
+    <string name="register_consent_suffix">.</string>
+    <string name="register_consent_required_error">Подтвердите согласие на обработку персональных данных и ознакомление с политикой конфиденциальности.</string>
     <string name="filters">Фильтры</string>
     <string name="apply_filters">Применить</string>
     <string name="clear_filters">Сбросить</string>
@@ -55,6 +70,7 @@
     <string name="add_to_cart">В корзину</string>
     <string name="added_to_cart">Добавлено в корзину</string>
     <string name="quantity">Количество</string>
+    <string name="product_guest_cart_hint">Чтобы указать количество и добавить товар в корзину, войдите в аккаунт. Просмотр каталога доступен без входа.</string>
     <string name="checkout">Оформить заказ</string>
     <string name="order_created">Заказ создан</string>
     <string name="cancel_order">Отменить заказ</string>
@@ -76,6 +92,8 @@
     <string name="block">Заблокировать</string>
     <string name="unblock">Разблокировать</string>
     <string name="assign_role">Назначить роль</string>
+    <string name="role_assignment_system">%1$s — назначено системой (%2$s)</string>
+    <string name="role_assignment_admin">%1$s — назначил админ %2$s (%3$s)</string>
     <string name="remove_role">Снять роль</string>
     <string name="update_status">Обновить статус</string>
     <string name="theme_system">Как в системе</string>
@@ -110,7 +128,7 @@
     <string name="role_manager">Менеджер</string>
     <string name="role_moderator">Модератор</string>
     <string name="role_administrator">Администратор</string>
-    <string name="role_guest">Гость</string>
+    <string name="role_client">Клиент</string>
     <string name="notifications_section">Push-уведомления</string>
     <string name="notif_order_status">Изменение статуса заказов</string>
     <string name="notif_order_status_desc">Push, когда статус заказа меняется (без опроса в фоне)</string>
